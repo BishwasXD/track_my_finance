@@ -24,3 +24,9 @@ class UserSerializer(serializers.ModelSerializer):
     """Since we are using custom usermodel, we need to overide the create method provided"""
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
+
+
+class UserLoginSerilaizer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['email','password']
