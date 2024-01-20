@@ -9,3 +9,13 @@ class UserIncomeSerializer(serializers.ModelSerializer):
         fields = ['amount','source','description','user']
     
 
+class UserExpenseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Expense
+        fields = ['amount','category','description','user']
+
+class UserBudgetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Budget
+        fields = ['amount', 'user']
+        
