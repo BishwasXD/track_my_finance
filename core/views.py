@@ -16,6 +16,7 @@ from core.serializers import UserIncomeSerializer, UserExpenseSerializer, UserBu
 class UserIncomeView(APIView):
     def post(self, request):
         serializer = UserIncomeSerializer(data = request.data)
+        print('data ',serializer)
         serializer.is_valid(raise_exception=True)
         amount = serializer.data['amount']
         user = serializer.data['user']
@@ -51,25 +52,30 @@ class UserBudgetView(APIView):
 
 class GetIncomeDetailsView(APIView):
     def get(self, request):
-        income = Income.objects.filter(id = 11)
+        income = Income.objects.all()
         serializer = UserIncomeSerializer(income, many = True)
-        res = generateIncomeResponse(serializer)
+        res = generateDoughnutData(serializer)
         return Response(res, status=status.HTTP_202_ACCEPTED)
 
 class GetExpenseDetailsView(APIView):
     def get(self, request):
         expense = Expense.objects.all()
         serializer = UserExpenseSerializer(expense, many = True)
-        res = generateExpenseResponse(serializer)
+        res = generateDoughnutData(serializer, True)
         return Response(res, status=status.HTTP_202_ACCEPTED)
 
 
-#TODO: change model field to category and use one fn to generate response
-def generateIncomeResponse(serializer):
+def generateDoughnutData(serializer, expense =  None):
     response = {}
     res = {}
-    for data in serializer.data:
-       response[data['source']] = response.get(data['source'], 1) + float(data.get('amount'))
+    
+    if expense is not None:
+     for data in serializer.data:
+       response[data['category']] = response.get(data['category'], 0) + float(data.get('amount'))
+    else:
+     for data in serializer.data:
+       response[data['source']] = response.get(data['source'], 0) + float(data.get('amount'))
+
 
     sorted_keys = list(sorted(response, key = response.get, reverse=True))
     sorted_values = list(sorted(response.values(), reverse=True))
@@ -86,21 +92,3 @@ def generateIncomeResponse(serializer):
 
 
 
-def generateExpenseResponse(serializer):
-    response = {}
-    res = {}
-    for data in serializer.data:
-       response[data['category']] = response.get(data['category'], 1) + float(data.get('amount'))
-
-    sorted_keys = list(sorted(response, key = response.get, reverse=True))
-    sorted_values = list(sorted(response.values(), reverse=True))
-
-    if len(sorted_values) > 5:
-     others_sum =sum(sorted_values[4:])
-     res['others'] = others_sum
-
-    for i in range(len(sorted_values)):
-        res[sorted_keys[i]] = sorted_values[i]
-        if i == 3:
-            break
-    return res
