@@ -7,7 +7,7 @@ from rest_framework import generics
 
 from core.models import Income, Expense, Budget
 from accounts.models import User
-from core.serializers import UserIncomeSerializer, UserExpenseSerializer, UserBudgetSerializer
+from core.serializers import UserIncomeSerializer, UserExpenseSerializer, UserBudgetSerializer, LineDataSerializer
 
 
 
@@ -65,6 +65,16 @@ class GetExpenseDetailsView(APIView):
         return Response(res, status=status.HTTP_202_ACCEPTED)
 
 
+class GetIncomeExpenseView(APIView):
+   def get(self,request):
+      expense = Expense.objects.values('amount')
+      income = Income.objects.values('amount')
+      incomeserializer = LineDataSerializer(income,many=True)
+      expenseserializer = LineDataSerializer(expense,many=True)
+      response = generateLineData(incomeserializer,expenseserializer)
+      return Response(response,status=status.HTTP_202_ACCEPTED)
+      
+
 def generateDoughnutData(serializer, expense =  None):
     response = {}
     res = {}
@@ -92,3 +102,20 @@ def generateDoughnutData(serializer, expense =  None):
 
 
 
+def generateLineData(income,expense):
+   incomelist = []
+   expenselist = []
+   response = {}
+
+   for amount in income.data:
+      incomelist.append(float(amount.get('amount')))
+
+   for amount in expense.data:
+      expenselist.append(float((amount.get('amount'))))
+   
+   response['income'] = incomelist
+   response['expense'] = expenselist
+
+
+
+   return response

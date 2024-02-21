@@ -18,4 +18,10 @@ class UserBudgetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Budget
         fields = ['amount', 'user']
-        
+
+
+class LineDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Expense
+        fields = ['amount']
+    
