@@ -6,13 +6,13 @@ from accounts.models import User
 class UserIncomeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Income
-        fields = ['amount','source','description','user']
+        fields = ['amount','source','description', 'date']
     
 
 class UserExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Expense
-        fields = ['amount','category','description','user']
+        fields = ['amount','category','description','date']
 
 class UserBudgetSerializer(serializers.ModelSerializer):
     class Meta:
