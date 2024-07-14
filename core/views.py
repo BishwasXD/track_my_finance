@@ -1,4 +1,6 @@
 from rest_framework.response import Response
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework.decorators import APIView
 from rest_framework import generics
@@ -15,42 +17,34 @@ import pandas as pd
 
 
 class UserIncomeView(APIView):
+    authentication_classes = (JWTAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
     def post(self, request):
-        serializer = UserIncomeSerializer(data=request.data)
-        print("data ", serializer)
+        data = request.data.copy()
+        data["user"] = self.request.user.id
+        serializer = UserIncomeSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        amount = serializer.data["amount"]
-        user = serializer.data["user"]
-        user_instance = User.objects.get(id=user)
-        description = serializer.data["description"]
-        source = serializer.data["source"]
-        Income.objects.create(
-            amount=amount, user=user_instance, description=description, source=source
-        )
-        return Response(
-            {"message": "income data added successfully!"},
-            status=status.HTTP_201_CREATED,
-        )
+        serializer.save()
+        return Response({"message": "Income data added successfully"}, status=201)
 
 
 class UserExpenseView(APIView):
+    permission_classes = (IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+
     def post(self, request):
-        serializer = UserExpenseSerializer(data=request.data)
+        data = request.data.copy()
+        data["user"] = self.request.user.id
+        serializer = UserExpenseSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        amount = serializer.data["amount"]
-        user = serializer.data["user"]
-        user_instance = User.objects.get(id=user)
-        description = serializer.data["description"]
-        category = serializer.data["category"]
-        Expense.objects.create(
-            amount=amount,
-            user=user_instance,
-            description=description,
-            category=category,
-        )
+        serializer.save()
         return Response(
-            {"message": "expense data added successfully!"},
-            status=status.HTTP_201_CREATED,
+            {
+                "message",
+                f"Expense data added successfully for a user {self.request.user}",
+            },
+            status=201,
         )
 
 
@@ -78,20 +72,12 @@ class GetIncomeDetailsView(APIView):
 
 class GetExpenseDetailsView(APIView):
     def get(self, request):
-        expense = Expense.objects.all()
+        user = self.request.user.id
+        expense = Expense.objects.get(user_id=user)
         serializer = UserExpenseSerializer(expense, many=True)
         res = generateDoughnutData(serializer, True)
         return Response(res, status=status.HTTP_202_ACCEPTED)
 
-
-class GetIncomeExpenseView(APIView):
-    def get(self, request):
-        expense = Expense.objects.values("amount")
-        income = Income.objects.values("amount")
-        incomeserializer = LineDataSerializer(income, many=True)
-        expenseserializer = LineDataSerializer(expense, many=True)
-        response = generateLineData(incomeserializer, expenseserializer)
-        return Response(response, status=status.HTTP_202_ACCEPTED)
 
 
 class GenerateCsvView(APIView):
@@ -103,12 +89,16 @@ class GenerateCsvView(APIView):
 
         df = pd.DataFrame(income_serializer)
 
-        response = HttpResponse(content_type="text/csv") #set content type in response
+        response = HttpResponse(content_type="text/csv")  # set content type in response
 
-        response["Content-Disposition"] = 'attachment; filename="income_data.csv"' # indicates atttached data is to be downloaded with given file name
+        response["Content-Disposition"] = (
+            'attachment; filename="income_data.csv"'  # indicates atttached data is to be downloaded with given file name
+        )
 
-        df.to_csv(path_or_buf=response, index=False) #directly writes csv data in response as the arg takes file path or a string
-        
+        df.to_csv(
+            path_or_buf=response, index=False
+        )  # directly writes csv data in response as the arg takes file path or a string
+
         return response
 
 
@@ -141,18 +131,13 @@ def generateDoughnutData(serializer, expense=None):
     return res
 
 
-def generateLineData(income, expense):
-    incomelist = []
-    expenselist = []
-    response = {}
+def generate(data:object):
+    res = {}
+    for key, value in data.items():
+        res[key] += (value, 0)
+    for key, value in res.items():
+        pass
+        
+    
+        
 
-    for amount in income.data:
-        incomelist.append(float(amount.get("amount")))
-
-    for amount in expense.data:
-        expenselist.append(float((amount.get("amount"))))
-
-    response["income"] = incomelist
-    response["expense"] = expenselist
-
-    return response

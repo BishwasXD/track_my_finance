@@ -24,7 +24,7 @@ class Income(models.Model):
     
 class Budget(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
-    user = user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user  = models.ForeignKey(User, on_delete=models.CASCADE)
     start_date = models.DateField(default=timezone.now)
     end_date = models.DateField(default= timezone.now() + timedelta(days=30))
 

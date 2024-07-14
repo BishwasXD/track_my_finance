@@ -20,7 +20,6 @@ class CreateUserView(APIView):
     def post(self, request):
         email = request.data['email']
         if User.objects.filter(email = email).exists():
-            print('such user already exists')
             return Response({'message' : 'user with same email exists !'},status=status.HTTP_400_BAD_REQUEST)
         
         serializer = UserSerializer(data = request.data)
@@ -46,3 +45,12 @@ class UserLoginView(APIView):
         return Response({'message' : 'user doesnt exist!!'}, status=status.HTTP_400_BAD_REQUEST)
         
 
+class GoogleLoginView(APIView):
+    def post(self, request):
+        print('this is request data',request.data)
+        google_email = request.data['email']
+        print(google_email)
+        user, created = User.objects.get_or_create(email=google_email)
+        print(user, created)
+        token = get_tokens_for_user(user)
+        return Response({'message' : 'google User Created Successfully!', 'token' : token},status=status.HTTP_201_CREATED)

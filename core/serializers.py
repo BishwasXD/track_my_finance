@@ -12,7 +12,7 @@ class UserIncomeSerializer(serializers.ModelSerializer):
 class UserExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Expense
-        fields = ['amount','category','description','date']
+        fields = ['amount','category','description','date', 'user']
 
 class UserBudgetSerializer(serializers.ModelSerializer):
     class Meta:
