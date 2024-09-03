@@ -14,8 +14,8 @@ from core.serializers import (
     LineDataSerializer,
 )
 import pandas as pd
-
-
+from django.db.models.functions import TruncDate
+from django.db.models import Sum
 class UserIncomeView(APIView):
     authentication_classes = (JWTAuthentication,)
     permission_classes = (IsAuthenticated,)
@@ -79,7 +79,6 @@ class GetExpenseDetailsView(APIView):
         return Response(res, status=status.HTTP_202_ACCEPTED)
 
 
-
 class GenerateCsvView(APIView):
     def get(self, request):
 
@@ -131,13 +130,37 @@ def generateDoughnutData(serializer, expense=None):
     return res
 
 
-def generate(data:object):
+def generate(data: object):
     res = {}
     for key, value in data.items():
         res[key] += (value, 0)
     for key, value in res.items():
         pass
-        
-    
-        
 
+
+class IncomeExpenseLineChart(APIView):
+
+    def get(self, request):
+        aggregated_income = (
+            Income.objects.values(Date=TruncDate('date'))
+            #the annotate method groups the data by date(field specified in values method) and for each unique date it calculates the sum.
+            #same dates are grouoed together
+            .annotate(amount=Sum("amount")) 
+            #sorting by date
+            .order_by("Date")
+        )
+        aggregated_expense = (
+            Expense.objects.values(Date=TruncDate('date'))
+            .annotate(amount=Sum("amount"))
+            .order_by("Date")
+        )
+
+        income_serializer = LineDataSerializer(aggregated_income, many=True).data
+        expense_serializer = LineDataSerializer(aggregated_expense, many=True).data
+
+        line_data_response = {
+            "income": income_serializer,
+            "expense": expense_serializer,
+        }
+
+        return Response({'data':line_data_response, 'message':'data loaded successfully'}, status=200)
