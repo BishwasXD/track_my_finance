@@ -155,8 +155,8 @@ class IncomeExpenseLineChart(APIView):
             .order_by("Date")
         )
 
-        income_serializer = LineDataSerializer(aggregated_income, many=True).data
-        expense_serializer = LineDataSerializer(aggregated_expense, many=True).data
+        income_serializer = generate_format(LineDataSerializer(aggregated_income, many=True).data)
+        expense_serializer = generate_format(LineDataSerializer(aggregated_expense, many=True).data)
 
         line_data_response = {
             "income": income_serializer,
@@ -164,3 +164,10 @@ class IncomeExpenseLineChart(APIView):
         }
 
         return Response({'data':line_data_response, 'message':'data loaded successfully'}, status=200)
+    
+def generate_format(data):
+    res = {}
+    for item in data:
+        print(item)
+        res[item['Date']] = item['amount']
+    return res
