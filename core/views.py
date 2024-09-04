@@ -3,7 +3,6 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework.decorators import APIView
-from rest_framework import generics
 from django.http import HttpResponse
 from core.models import Income, Expense, Budget
 from accounts.models import User
@@ -12,10 +11,14 @@ from core.serializers import (
     UserExpenseSerializer,
     UserBudgetSerializer,
     LineDataSerializer,
+    PieDataSerializer,
 )
 import pandas as pd
 from django.db.models.functions import TruncDate
 from django.db.models import Sum
+from core.utils import generatePieData
+
+
 class UserIncomeView(APIView):
     authentication_classes = (JWTAuthentication,)
     permission_classes = (IsAuthenticated,)
@@ -62,38 +65,15 @@ class UserBudgetView(APIView):
         )
 
 
-class GetIncomeDetailsView(APIView):
-    def get(self, request):
-        income = Income.objects.all()
-        serializer = UserIncomeSerializer(income, many=True)
-        res = generateDoughnutData(serializer)
-        return Response(res, status=status.HTTP_202_ACCEPTED)
-
-
-class GetExpenseDetailsView(APIView):
-    def get(self, request):
-        user = self.request.user.id
-        expense = Expense.objects.get(user_id=user)
-        serializer = UserExpenseSerializer(expense, many=True)
-        res = generateDoughnutData(serializer, True)
-        return Response(res, status=status.HTTP_202_ACCEPTED)
-
-
 class GenerateCsvView(APIView):
     def get(self, request):
-
         income_data = Income.objects.all()
-
         income_serializer = UserIncomeSerializer(income_data, many=True).data
-
         df = pd.DataFrame(income_serializer)
-
         response = HttpResponse(content_type="text/csv")  # set content type in response
-
         response["Content-Disposition"] = (
             'attachment; filename="income_data.csv"'  # indicates atttached data is to be downloaded with given file name
         )
-
         df.to_csv(
             path_or_buf=response, index=False
         )  # directly writes csv data in response as the arg takes file path or a string
@@ -101,73 +81,62 @@ class GenerateCsvView(APIView):
         return response
 
 
-def generateDoughnutData(serializer, expense=None):
-    response = {}
-    res = {}
-
-    if expense is not None:
-        for data in serializer.data:
-            response[data["category"]] = response.get(data["category"], 0) + float(
-                data.get("amount")
-            )
-    else:
-        for data in serializer.data:
-            response[data["source"]] = response.get(data["source"], 0) + float(
-                data.get("amount")
-            )
-
-    sorted_keys = list(sorted(response, key=response.get, reverse=True))
-    sorted_values = list(sorted(response.values(), reverse=True))
-
-    if len(sorted_values) > 5:
-        others_sum = sum(sorted_values[4:])
-        res["others"] = others_sum
-
-    for i in range(len(sorted_values)):
-        res[sorted_keys[i]] = sorted_values[i]
-        if i == 3:
-            break
-    return res
-
-
-def generate(data: object):
-    res = {}
-    for key, value in data.items():
-        res[key] += (value, 0)
-    for key, value in res.items():
-        pass
-
-
 class IncomeExpenseLineChart(APIView):
 
     def get(self, request):
         aggregated_income = (
-            Income.objects.values(Date=TruncDate('date'))
-            #the annotate method groups the data by date(field specified in values method) and for each unique date it calculates the sum.
-            #same dates are grouoed together
-            .annotate(amount=Sum("amount")) 
-            #sorting by date
+            Income.objects.values(Date=TruncDate("date"))
+            # the annotate method groups the data by date(field specified in values method) and for each unique date it calculates the sum.
+            # same dates are grouped together
+            .annotate(amount=Sum("amount"))
+            # sorting by date
             .order_by("Date")
         )
         aggregated_expense = (
-            Expense.objects.values(Date=TruncDate('date'))
+            Expense.objects.values(Date=TruncDate("date"))
             .annotate(amount=Sum("amount"))
             .order_by("Date")
         )
 
-        income_serializer = generate_format(LineDataSerializer(aggregated_income, many=True).data)
-        expense_serializer = generate_format(LineDataSerializer(aggregated_expense, many=True).data)
+        income_serializer = generate_format(
+            LineDataSerializer(aggregated_income, many=True).data
+        )
+        expense_serializer = generate_format(
+            LineDataSerializer(aggregated_expense, many=True).data
+        )
 
         line_data_response = {
             "income": income_serializer,
             "expense": expense_serializer,
         }
 
-        return Response({'data':line_data_response, 'message':'data loaded successfully'}, status=200)
-    
+        return Response(
+            {"data": line_data_response, "message": "data loaded successfully"},
+            status=200,
+        )
+
+
 def generate_format(data):
     res = {}
     for item in data:
         print(item)
-        res[item['Date']] = item['amount']
+        res[item["Date"]] = item["amount"]
     return res
+
+
+class IncomeExpensePieChart(APIView):
+    def get(self, request):
+        response = {}
+        income_data = Income.objects.order_by("amount")
+        expense_data = Expense.objects.order_by("amount")
+        income_serializer = generatePieData(
+            PieDataSerializer(income_data, many=True).data
+        )
+        expense_serializer = generatePieData(
+            PieDataSerializer(expense_data, many=True).data
+        )
+        response["income_data"] = income_serializer
+        response["expense_data"] = expense_serializer
+        return Response(
+            {"data": response, "message": "Data loaded successfully"}, status=200
+        )

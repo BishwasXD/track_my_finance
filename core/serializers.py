@@ -19,12 +19,14 @@ class UserBudgetSerializer(serializers.ModelSerializer):
         model = Budget
         fields = ['amount', 'user']
 
-
-from rest_framework import serializers
-
 class LineDataSerializer(serializers.Serializer):
     Date = serializers.DateField()
     amount = serializers.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+class PieDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Income
+        fields = ['amount', 'category']
  
 
     
