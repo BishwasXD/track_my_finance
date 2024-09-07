@@ -6,7 +6,8 @@ from core.views import (
     UserBudgetView,
     GenerateCsvView,
     IncomeExpenseLineChart,
-    IncomeExpensePieChart
+    IncomeExpensePieChart,
+    IncomeExpenseDonutChart
 )
 
 urlpatterns = [
@@ -15,5 +16,7 @@ urlpatterns = [
     path("add-budget", UserBudgetView.as_view(), name="AddBudget"),
     path("get-csv-file", GenerateCsvView.as_view(), name="generate-csv"),
     path('get-line-chart', IncomeExpenseLineChart.as_view(), name='get-line-chart'),
-    path('get-pie-chart', IncomeExpensePieChart.as_view(), name='pie-chart')
+    path('get-pie-chart', IncomeExpensePieChart.as_view(), name='pie-chart'),
+    path('get-donut-chart', IncomeExpenseDonutChart.as_view(), name='donut-chart')
+
 ]

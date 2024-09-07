@@ -12,6 +12,7 @@ from core.serializers import (
     UserBudgetSerializer,
     LineDataSerializer,
     PieDataSerializer,
+    DonutSerializer
 )
 import pandas as pd
 from django.db.models.functions import TruncDate
@@ -140,3 +141,18 @@ class IncomeExpensePieChart(APIView):
         return Response(
             {"data": response, "message": "Data loaded successfully"}, status=200
         )
+class IncomeExpenseDonutChart(APIView):
+    def get(self, request):
+        income = Income.objects.all()
+        expense = Expense.objects.all()
+        income_data = sum_all(DonutSerializer(income, many = True).data, 'Income')
+        expense_data = sum_all(DonutSerializer(expense, many = True).data, 'Expense')
+        return Response({'data':[income_data, expense_data],'message':'successfully loaded data'}, status=200)
+        
+
+def sum_all(data, label):
+    sum = {}
+    for item in data:
+        sum[label] = float(item['amount']) + sum.get(label, 0)
+    return sum
+    

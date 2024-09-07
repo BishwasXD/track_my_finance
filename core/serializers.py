@@ -6,7 +6,7 @@ from accounts.models import User
 class UserIncomeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Income
-        fields = ['amount','source','description', 'date']
+        fields = ['amount','category','description', 'date']
     
 
 class UserExpenseSerializer(serializers.ModelSerializer):
@@ -29,4 +29,7 @@ class PieDataSerializer(serializers.ModelSerializer):
         fields = ['amount', 'category']
  
 
-    
+class DonutSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Income
+        fields = ['amount']
