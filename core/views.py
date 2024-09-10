@@ -4,21 +4,23 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework.decorators import APIView
 from django.http import HttpResponse
-from core.models import Income, Expense, Budget
+from core.models import Income, Expense
 from accounts.models import User
 from core.serializers import (
     UserIncomeSerializer,
     UserExpenseSerializer,
-    UserBudgetSerializer,
     LineDataSerializer,
     PieDataSerializer,
-    DonutSerializer
+    DonutSerializer,
+    TableDataSerializer
 )
 import pandas as pd
 from django.db.models.functions import TruncDate
 from django.db.models import Sum
 from core.utils import generatePieData
-
+from itertools import chain
+from operator import attrgetter
+from django.db import models
 
 class UserIncomeView(APIView):
     authentication_classes = (JWTAuthentication,)
@@ -49,20 +51,6 @@ class UserExpenseView(APIView):
                 f"Expense data added successfully for a user {self.request.user}",
             },
             status=201,
-        )
-
-
-class UserBudgetView(APIView):
-    def post(self, request):
-        serializer = UserBudgetSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        amount = serializer.data["amount"]
-        user = serializer.data["user"]
-        user_instance = User.objects.get(id=user)
-        Budget.objects.create(amount=amount, user=user_instance)
-        return Response(
-            {"message": "budget data added successfully!"},
-            status=status.HTTP_201_CREATED,
         )
 
 
@@ -141,18 +129,45 @@ class IncomeExpensePieChart(APIView):
         return Response(
             {"data": response, "message": "Data loaded successfully"}, status=200
         )
+
+
 class IncomeExpenseDonutChart(APIView):
     def get(self, request):
         income = Income.objects.all()
         expense = Expense.objects.all()
-        income_data = sum_all(DonutSerializer(income, many = True).data, 'Income')
-        expense_data = sum_all(DonutSerializer(expense, many = True).data, 'Expense')
-        return Response({'data':[income_data, expense_data],'message':'successfully loaded data'}, status=200)
-        
+        income_data = sum_all(DonutSerializer(income, many=True).data, "Income")
+        expense_data = sum_all(DonutSerializer(expense, many=True).data, "Expense")
+        return Response(
+            {
+                "data": [income_data, expense_data],
+                "message": "successfully loaded data",
+            },
+            status=200,
+        )
+
 
 def sum_all(data, label):
     sum = {}
     for item in data:
-        sum[label] = float(item['amount']) + sum.get(label, 0)
+        sum[label] = float(item["amount"]) + sum.get(label, 0)
     return sum
-    
+
+
+class TableSummaryDataView(APIView):
+    def get(self, request):
+        income_data = (
+            Income.objects.all()
+          
+            .annotate(field=models.Value("Income", output_field=models.CharField()))
+        )
+        expense_data = (
+            Expense.objects.all()
+      
+            .annotate(field=models.Value("Expense", output_field=models.CharField()))
+        )
+        combined_data = sorted(chain(income_data, expense_data), key=attrgetter("date"), reverse=True)
+        table_data =  TableDataSerializer(combined_data, many = True).data
+        return Response({'data':table_data,'message':'data loaded successfully'}, status=200)
+
+
+       

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from core.models import Income, Expense, Budget
+from core.models import Income, Expense
 from accounts.models import User
 
 class UserIncomeSerializer(serializers.ModelSerializer):
@@ -13,11 +13,6 @@ class UserExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Expense
         fields = ['amount','category','description','date', 'user']
-
-class UserBudgetSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Budget
-        fields = ['amount', 'user']
 
 class LineDataSerializer(serializers.Serializer):
     Date = serializers.DateField()
@@ -33,3 +28,9 @@ class DonutSerializer(serializers.ModelSerializer):
     class Meta:
         model = Income
         fields = ['amount']
+
+class TableDataSerializer(serializers.ModelSerializer):
+    field = serializers.CharField()
+    class Meta:
+        model = Income
+        fields = "__all__"
