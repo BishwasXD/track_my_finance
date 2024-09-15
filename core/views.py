@@ -147,10 +147,10 @@ class IncomeExpenseDonutChart(APIView):
 
 
 def sum_all(data, label):
-    sum = {}
+    total = 0
     for item in data:
-        sum[label] = float(item["amount"]) + sum.get(label, 0)
-    return sum
+        total = float(item["amount"]) + total
+    return total
 
 
 class TableSummaryDataView(APIView):
