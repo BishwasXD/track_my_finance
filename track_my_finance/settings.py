@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
-
+from decouple import config
 from pathlib import Path
 from datetime import timedelta
 
@@ -82,15 +82,14 @@ WSGI_APPLICATION = 'track_my_finance.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres', 
-        'USER': 'postgres', 
-        'PASSWORD': 'qwerty@#7',
-        'HOST': '127.0.0.1', 
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.postgresql', 
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST'),
+        'PORT': config('DB_PORT', default='5432'), 
     }
 }
-
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
