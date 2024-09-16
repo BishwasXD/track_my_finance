@@ -1,18 +1,17 @@
 from rest_framework import serializers
 
-from core.models import Income, Expense
-from accounts.models import User
+from core.models import Transaction, Income
 
-class UserIncomeSerializer(serializers.ModelSerializer):
+
+"""
+apparently we cannot use Transcation as a model because it is a abstract model from which other models are derived
+and it has no corresponding table in the database and django tries to map the value to correspondig field in the table
+for eg: we often use serializer.save() to save val directly to database 
+"""
+class AddTransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Income
-        fields = ['amount','category','description', 'date']
-    
-
-class UserExpenseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Expense
-        fields = ['amount','category','description','date', 'user']
+        fields = "__all__"
 
 class LineDataSerializer(serializers.Serializer):
     Date = serializers.DateField()

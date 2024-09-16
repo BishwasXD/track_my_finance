@@ -1,18 +1,16 @@
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
 from rest_framework.decorators import APIView
 from django.http import HttpResponse
-from core.models import Income, Expense
+from core.models import Income, Expense, Investment, Saving
 from accounts.models import User
 from core.serializers import (
-    UserIncomeSerializer,
-    UserExpenseSerializer,
     LineDataSerializer,
     PieDataSerializer,
     DonutSerializer,
-    TableDataSerializer
+    TableDataSerializer,
+    AddTransactionSerializer,
 )
 import pandas as pd
 from django.db.models.functions import TruncDate
@@ -22,43 +20,39 @@ from itertools import chain
 from operator import attrgetter
 from django.db import models
 
-class UserIncomeView(APIView):
-    authentication_classes = (JWTAuthentication,)
-    permission_classes = (IsAuthenticated,)
 
-    def post(self, request):
+class AddTransactionsView(APIView):
+    """
+    we need to pass in the dynamic field name for this api to work to the post method.
+    unlike fn args the name should match the name from the url like: <str:type> corresponds to type here
+    """
+
+    def post(self, request, type):
+        print('inside fn')
+        
+        type_model_map = {
+            "Income": Income,
+            "Expense": Expense,
+            "Investment": Investment,
+            "Saving": Saving,
+        }
+        model = type_model_map.get(type)
         data = request.data.copy()
-        data["user"] = self.request.user.id
-        serializer = UserIncomeSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({"message": "Income data added successfully"}, status=201)
-
-
-class UserExpenseView(APIView):
-    permission_classes = (IsAuthenticated,)
-    authentication_classes = (JWTAuthentication,)
-
-    def post(self, request):
-        data = request.data.copy()
-        data["user"] = self.request.user.id
-        serializer = UserExpenseSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(
-            {
-                "message",
-                f"Expense data added successfully for a user {self.request.user}",
-            },
-            status=201,
-        )
+        # print(data)
+        # data["user"] = self.request.user.id
+        # print(data)
+        serializer = AddTransactionSerializer(data=data)
+        if serializer.is_valid():
+            model.objects.create(**serializer.validated_data)
+            print('success')
+            return Response({"message": "Data added successfully"}, status=201)
+        return Response(serializer.errors, status=400)
 
 
 class GenerateCsvView(APIView):
     def get(self, request):
         income_data = Income.objects.all()
-        income_serializer = UserIncomeSerializer(income_data, many=True).data
-        df = pd.DataFrame(income_serializer)
+        df = pd.DataFrame(income_data)
         response = HttpResponse(content_type="text/csv")  # set content type in response
         response["Content-Disposition"] = (
             'attachment; filename="income_data.csv"'  # indicates atttached data is to be downloaded with given file name
@@ -155,19 +149,16 @@ def sum_all(data, label):
 
 class TableSummaryDataView(APIView):
     def get(self, request):
-        income_data = (
-            Income.objects.all()
-          
-            .annotate(field=models.Value("Income", output_field=models.CharField()))
+        income_data = Income.objects.all().annotate(
+            field=models.Value("Income", output_field=models.CharField())
         )
-        expense_data = (
-            Expense.objects.all()
-      
-            .annotate(field=models.Value("Expense", output_field=models.CharField()))
+        expense_data = Expense.objects.all().annotate(
+            field=models.Value("Expense", output_field=models.CharField())
         )
-        combined_data = sorted(chain(income_data, expense_data), key=attrgetter("date"), reverse=True)
-        table_data =  TableDataSerializer(combined_data, many = True).data
-        return Response({'data':table_data,'message':'data loaded successfully'}, status=200)
-
-
-       
+        combined_data = sorted(
+            chain(income_data, expense_data), key=attrgetter("date"), reverse=True
+        )
+        table_data = TableDataSerializer(combined_data, many=True).data
+        return Response(
+            {"data": table_data, "message": "data loaded successfully"}, status=200
+        )
