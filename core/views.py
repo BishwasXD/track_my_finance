@@ -28,7 +28,7 @@ class AddTransactionsView(APIView):
     """
 
     def post(self, request, type):
-        print('inside fn')
+     
         
         type_model_map = {
             "Income": Income,
@@ -44,7 +44,6 @@ class AddTransactionsView(APIView):
         serializer = AddTransactionSerializer(data=data)
         if serializer.is_valid():
             model.objects.create(**serializer.validated_data)
-            print('success')
             return Response({"message": "Data added successfully"}, status=201)
         return Response(serializer.errors, status=400)
 
