@@ -7,6 +7,7 @@ import jwt
 from accounts.serializers import UserSerializer, UserLoginSerilaizer
 from accounts.models import User
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 
 
 def get_tokens_for_user(user):
@@ -15,6 +16,7 @@ def get_tokens_for_user(user):
     return {
         "refresh": str(refresh),
         "access": str(refresh.access_token),
+        "email": user.email,
     }
 
 
@@ -50,7 +52,7 @@ class UserLoginView(APIView):
         if user:
             token = get_tokens_for_user(user)
             return Response(
-                {"message": "Logged in successfully", "token": token},
+                {"message": "Logged in successfully", "data": token},
                 status=status.HTTP_200_OK,
             )
         return Response(
@@ -58,16 +60,22 @@ class UserLoginView(APIView):
         )
 
 
-# TODO: check token expiry later
 class VerifyTokenView(APIView):
     def post(self, request):
         token = request.data.get("token")
         if not token:
-            return Response({"message": "Token not provided"}, 400)
-        decoded_token = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-        return Response(
-            {"message": "Logged in successfully", "data": decoded_token}, 200
-        )
+            return Response({"message": "Token not provided"}, status=400)
+
+        decoded_data = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded_data.get("user_id")
+        try:
+            user = User.objects.get(id=user_id)
+        except ObjectDoesNotExist:
+            return Response({"message": "Invalid token"}, status=400)
+        decoded_data["email"] = user.email
+        decoded_data["token"] = token
+        print(decoded_data)
+        return Response(decoded_data, status=200)
 
 
 class GoogleLoginView(APIView):
