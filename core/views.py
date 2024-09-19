@@ -28,8 +28,7 @@ class AddTransactionsView(APIView):
     """
 
     def post(self, request, type):
-     
-        
+
         type_model_map = {
             "Income": Income,
             "Expense": Expense,
@@ -64,10 +63,13 @@ class GenerateCsvView(APIView):
 
 
 class IncomeExpenseLineChart(APIView):
+    authentication_classes = (JWTAuthentication,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request):
+        user = request.user
         aggregated_income = (
-            Income.objects.values(Date=TruncDate("date"))
+            Income.objects.filter(user=user).values(Date=TruncDate("date"))
             # the annotate method groups the data by date(field specified in values method) and for each unique date it calculates the sum.
             # same dates are grouped together
             .annotate(amount=Sum("amount"))
@@ -75,7 +77,8 @@ class IncomeExpenseLineChart(APIView):
             .order_by("Date")
         )
         aggregated_expense = (
-            Expense.objects.values(Date=TruncDate("date"))
+            Expense.objects.filter(user=user)
+            .values(Date=TruncDate("date"))
             .annotate(amount=Sum("amount"))
             .order_by("Date")
         )
@@ -93,7 +96,7 @@ class IncomeExpenseLineChart(APIView):
         }
 
         return Response(
-            {"data": line_data_response, "message": "data loaded successfully"},
+            line_data_response,
             status=200,
         )
 
@@ -107,27 +110,35 @@ def generate_format(data):
 
 
 class IncomeExpensePieChart(APIView):
+    authentication_classes = (JWTAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
     def get(self, request):
+        user = request.user
         response = {}
-        income_data = Income.objects.order_by("amount")
-        expense_data = Expense.objects.order_by("amount")
+        income_data = Income.objects.filter(user = user).order_by("amount")
+        expense_data = Expense.objects.filter(user = user).order_by("amount")
         income_serializer = generatePieData(
             PieDataSerializer(income_data, many=True).data
         )
         expense_serializer = generatePieData(
             PieDataSerializer(expense_data, many=True).data
         )
-        response["income_data"] = income_serializer
-        response["expense_data"] = expense_serializer
-        return Response(
-            {"data": response, "message": "Data loaded successfully"}, status=200
-        )
+        response["income"] = income_serializer
+        response["expense"] = expense_serializer
+        print('RES', response)
+        return Response(response, status=200)
 
 
 class IncomeExpenseDonutChart(APIView):
+    authentication_classes = (JWTAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
     def get(self, request):
-        income = Income.objects.all()
-        expense = Expense.objects.all()
+        user = request.user
+        print(user)
+        income = Income.objects.filter(user=user)
+        expense = Expense.objects.filter(user=user)
         income_data = sum_all(DonutSerializer(income, many=True).data, "Income")
         expense_data = sum_all(DonutSerializer(expense, many=True).data, "Expense")
         return Response(
@@ -147,11 +158,15 @@ def sum_all(data, label):
 
 
 class TableSummaryDataView(APIView):
+    authentication_classes = (JWTAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
     def get(self, request):
-        income_data = Income.objects.all().annotate(
+        user = request.user
+        income_data = Income.objects.filter(user=user).annotate(
             field=models.Value("Income", output_field=models.CharField())
         )
-        expense_data = Expense.objects.all().annotate(
+        expense_data = Expense.objects.filter(user=user).annotate(
             field=models.Value("Expense", output_field=models.CharField())
         )
         combined_data = sorted(

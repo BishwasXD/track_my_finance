@@ -65,7 +65,7 @@ class VerifyTokenView(APIView):
         token = request.data.get("token")
         if not token:
             return Response({"message": "Token not provided"}, status=400)
-
+           
         decoded_data = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         user_id = decoded_data.get("user_id")
         try:
