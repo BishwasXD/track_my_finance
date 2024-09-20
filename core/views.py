@@ -37,9 +37,6 @@ class AddTransactionsView(APIView):
         }
         model = type_model_map.get(type)
         data = request.data.copy()
-        # print(data)
-        # data["user"] = self.request.user.id
-        # print(data)
         serializer = AddTransactionSerializer(data=data)
         if serializer.is_valid():
             model.objects.create(**serializer.validated_data)
@@ -176,3 +173,23 @@ class TableSummaryDataView(APIView):
         return Response(
             {"data": table_data, "message": "data loaded successfully"}, status=200
         )
+
+
+class SummaryCardDataView(APIView):
+    authentication_classes = (JWTAuthentication,)
+    permission_classes = (IsAuthenticated,)
+    def get(self, request):
+        user = request.user
+        income_amount = Income.objects.filter(user=user).aggregate(income_amount=Sum('amount'))
+        expense_amount = Expense.objects.filter(user=user).aggregate(expense_amount=Sum('amount'))
+        investment_amount = Investment.objects.filter(user=user).aggregate(investment_amount=Sum('amount'))
+        saving_amount = Saving.objects.filter(user=user).aggregate(saving_amount=Sum('amount'))
+        
+        response_data = {
+            'income_amount': income_amount['income_amount'] or 0,
+            'expense_amount': expense_amount['expense_amount'] or 0,
+            'investment_amount': investment_amount['investment_amount'] or 0,
+            'saving_amount': saving_amount['saving_amount'] or 0
+        }
+
+        return Response(response_data)

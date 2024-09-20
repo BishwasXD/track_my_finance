@@ -33,3 +33,4 @@ class TableDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = Income
         fields = "__all__"
+
