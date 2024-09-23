@@ -7,7 +7,8 @@ from core.views import (
     IncomeExpenseDonutChart,
     TableSummaryDataView,
     AddTransactionsView,
-    SummaryCardDataView
+    SummaryCardDataView,
+    BarChartDataView,
     
 )
 
@@ -18,5 +19,6 @@ urlpatterns = [
     path('get-donut-chart', IncomeExpenseDonutChart.as_view(), name='donut-chart'),
     path('get-summarytable-data',TableSummaryDataView.as_view(),name='table-suumary'),
     path('add-transaction/<str:type>/', AddTransactionsView.as_view(),name='add-transaction'),
-    path('get-summary-data', SummaryCardDataView.as_view(), name='summary-data')
+    path('get-summary-data', SummaryCardDataView.as_view(), name='summary-data'),
+    path('get-bar-chart/<str:filter>/', BarChartDataView.as_view(), name='bar-chart')
 ]

@@ -11,6 +11,7 @@ from core.serializers import (
     DonutSerializer,
     TableDataSerializer,
     AddTransactionSerializer,
+    BarDataSerializer,
 )
 import pandas as pd
 from django.db.models.functions import TruncDate
@@ -19,6 +20,8 @@ from core.utils import generatePieData
 from itertools import chain
 from operator import attrgetter
 from django.db import models
+from datetime import date, timedelta
+from django.utils import timezone
 
 
 class AddTransactionsView(APIView):
@@ -81,10 +84,10 @@ class IncomeExpenseLineChart(APIView):
         )
 
         income_serializer = generate_format(
-            LineDataSerializer(aggregated_income, many=True).data
+            LineDataSerializer(aggregated_income, many=True).data, "Date"
         )
         expense_serializer = generate_format(
-            LineDataSerializer(aggregated_expense, many=True).data
+            LineDataSerializer(aggregated_expense, many=True).data, "Date"
         )
 
         line_data_response = {
@@ -98,11 +101,10 @@ class IncomeExpenseLineChart(APIView):
         )
 
 
-def generate_format(data):
+def generate_format(data, key):
     res = {}
     for item in data:
-        print(item)
-        res[item["Date"]] = item["amount"]
+        res[item[key]] = item["amount"]
     return res
 
 
@@ -113,8 +115,8 @@ class IncomeExpensePieChart(APIView):
     def get(self, request):
         user = request.user
         response = {}
-        income_data = Income.objects.filter(user = user).order_by("amount")
-        expense_data = Expense.objects.filter(user = user).order_by("amount")
+        income_data = Income.objects.filter(user=user).order_by("amount")
+        expense_data = Expense.objects.filter(user=user).order_by("amount")
         income_serializer = generatePieData(
             PieDataSerializer(income_data, many=True).data
         )
@@ -123,8 +125,11 @@ class IncomeExpensePieChart(APIView):
         )
         response["income"] = income_serializer
         response["expense"] = expense_serializer
-        print('RES', response)
+        print("RES", response)
         return Response(response, status=200)
+
+
+from datetime import datetime
 
 
 class IncomeExpenseDonutChart(APIView):
@@ -178,18 +183,87 @@ class TableSummaryDataView(APIView):
 class SummaryCardDataView(APIView):
     authentication_classes = (JWTAuthentication,)
     permission_classes = (IsAuthenticated,)
+
     def get(self, request):
         user = request.user
-        income_amount = Income.objects.filter(user=user).aggregate(income_amount=Sum('amount'))
-        expense_amount = Expense.objects.filter(user=user).aggregate(expense_amount=Sum('amount'))
-        investment_amount = Investment.objects.filter(user=user).aggregate(investment_amount=Sum('amount'))
-        saving_amount = Saving.objects.filter(user=user).aggregate(saving_amount=Sum('amount'))
-        
+        income_amount = Income.objects.filter(user=user).aggregate(
+            income_amount=Sum("amount")
+        )
+        expense_amount = Expense.objects.filter(user=user).aggregate(
+            expense_amount=Sum("amount")
+        )
+        investment_amount = Investment.objects.filter(user=user).aggregate(
+            investment_amount=Sum("amount")
+        )
+        saving_amount = Saving.objects.filter(user=user).aggregate(
+            saving_amount=Sum("amount")
+        )
+
         response_data = {
-            'income_amount': income_amount['income_amount'] or 0,
-            'expense_amount': expense_amount['expense_amount'] or 0,
-            'investment_amount': investment_amount['investment_amount'] or 0,
-            'saving_amount': saving_amount['saving_amount'] or 0
+            "income_amount": income_amount["income_amount"] or 0,
+            "expense_amount": expense_amount["expense_amount"] or 0,
+            "investment_amount": investment_amount["investment_amount"] or 0,
+            "saving_amount": saving_amount["saving_amount"] or 0,
         }
 
         return Response(response_data)
+
+
+class BarChartDataView(APIView):
+    days_map = {
+        "weekly": 7,
+        "monthly": 30,
+        "yearly": 360,
+    }
+
+    # what we need to do is to filter the data by time and add the data from that particular time frame.
+    # for income first we need to find the first entry and the last entry.
+    # then divide the time frame lets say if time frame is 1 yr 3 month, and filter is weekly it gets divided into, 60ish  part.
+    # iterate 60 times, accumulate data and add on list, there will be 60 data points can be messy in the chart.
+    def get(self, request, filter):
+        print("request incoming! ")
+        days = self.days_map[filter]
+        enddate = timezone.now()
+        startdate = enddate - timedelta(days=days)
+        expense_data = Expense.objects.all().order_by("date")
+        expense_data = generate_format(
+            BarDataSerializer(expense_data, many=True).data, "date"
+        )
+        expense_data = self.return_bardata(expense_data)
+        return Response(expense_data)
+
+    def return_bardata(self, data):
+        def parse_datetime(date_str):
+            try:
+
+                return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+            except ValueError:
+
+                return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S%z").replace(tzinfo=timezone.utc)
+
+        keys = [parse_datetime(date_str) for date_str in data.keys()]
+ 
+        values = list(data.values())
+        p1 = 0
+        p2 = 1
+        res = {}
+        while p2 < len(values):
+            difference = (keys[p2] - keys[p1]).days
+            if difference >= 7:
+                res[p1] = values[p1]
+                p1 = p1 + 1
+                p2 = p2 + 1
+            
+            elif difference < 7:
+                sum = float(values[p1])
+                while p2<len(keys) and (keys[p2] - keys[p1]).days < 7:
+                    sum = sum + float(values[p2])
+                    p2 = p2 + 1
+                res[p1] = sum
+                p1 = p2 
+                p2 = p2 + 1
+        if p1 == len(values) - 1:
+            res[p1] = values[p1]
+        
+
+        return res
