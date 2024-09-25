@@ -20,27 +20,25 @@ from core.utils import generatePieData
 from itertools import chain
 from operator import attrgetter
 from django.db import models
-from datetime import date, timedelta
 from django.utils import timezone
-
+from django.core.exceptions import ObjectDoesNotExist
 
 class AddTransactionsView(APIView):
     """
     we need to pass in the dynamic field name for this api to work to the post method.
     unlike fn args the name should match the name from the url like: <str:type> corresponds to type here
     """
-
-    def post(self, request, type):
-
-        type_model_map = {
+    type_model_map = {
             "Income": Income,
             "Expense": Expense,
             "Investment": Investment,
             "Saving": Saving,
         }
-        model = type_model_map.get(type)
-        data = request.data.copy()
-        serializer = AddTransactionSerializer(data=data)
+    def post(self, request, type):
+
+      
+        model = self.type_model_map.get(type)
+        serializer = AddTransactionSerializer(data=request.data)
         if serializer.is_valid():
             model.objects.create(**serializer.validated_data)
             return Response({"message": "Data added successfully"}, status=201)
@@ -220,50 +218,108 @@ class BarChartDataView(APIView):
     # for income first we need to find the first entry and the last entry.
     # then divide the time frame lets say if time frame is 1 yr 3 month, and filter is weekly it gets divided into, 60ish  part.
     # iterate 60 times, accumulate data and add on list, there will be 60 data points can be messy in the chart.
+    authentication_classes = (JWTAuthentication,)
+    permission_classes = (IsAuthenticated,)
     def get(self, request, filter):
-        print("request incoming! ")
-        days = self.days_map[filter]
-        enddate = timezone.now()
-        startdate = enddate - timedelta(days=days)
-        expense_data = Expense.objects.all().order_by("date")
+        filter = 30
+        user = request.user
+
+        expense_data = Expense.objects.filter(user = user).order_by("date")
+        income_data = Income.objects.filter(user = user).order_by("date")
+        investment_data = Investment.objects.filter(user = user).order_by("date")
+        saving_data = Saving.objects.filter(user = user).order_by("date")
         expense_data = generate_format(
             BarDataSerializer(expense_data, many=True).data, "date"
         )
-        expense_data = self.return_bardata(expense_data)
-        return Response(expense_data)
+        income_data = generate_format(
+            BarDataSerializer(income_data, many=True).data, "date"
+        )
+        investment_data = generate_format(
+            BarDataSerializer(investment_data, many=True).data, "date"
+        )
+        saving_data = generate_format(
+            BarDataSerializer(saving_data, many=True).data, "date"
+        )
 
-    def return_bardata(self, data):
+        expense_bardata = self.return_bardata(expense_data, filter)
+        income_bardata = self.return_bardata(income_data, filter)
+        investment_bardata = self.return_bardata(investment_data, filter)
+        saving_bardata = self.return_bardata(saving_data, filter)
+
+        response_data = {
+            "expenses": expense_bardata,
+            "income": income_bardata,
+            "investments": investment_bardata,
+            "savings": saving_bardata,
+        }
+
+        return Response(response_data)
+
+    def return_bardata(self, data, filter):
         def parse_datetime(date_str):
             try:
 
-                return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+                return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(
+                    tzinfo=timezone.utc
+                )
             except ValueError:
 
-                return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S%z").replace(tzinfo=timezone.utc)
+                return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S%z").replace(
+                    tzinfo=timezone.utc
+                )
 
         keys = [parse_datetime(date_str) for date_str in data.keys()]
- 
+
         values = list(data.values())
         p1 = 0
         p2 = 1
         res = {}
         while p2 < len(values):
             difference = (keys[p2] - keys[p1]).days
-            if difference >= 7:
+            if difference >= filter:
                 res[p1] = values[p1]
                 p1 = p1 + 1
                 p2 = p2 + 1
-            
-            elif difference < 7:
+
+            elif difference < filter:
                 sum = float(values[p1])
-                while p2<len(keys) and (keys[p2] - keys[p1]).days < 7:
+                while p2 < len(keys) and (keys[p2] - keys[p1]).days < filter:
                     sum = sum + float(values[p2])
                     p2 = p2 + 1
                 res[p1] = sum
-                p1 = p2 
+                p1 = p2
                 p2 = p2 + 1
         if p1 == len(values) - 1:
             res[p1] = values[p1]
-        
 
         return res
+
+class EditTransactionDataView(APIView):
+    type_model_map = {
+            "Income": Income,
+            "Expense": Expense,
+            "Investment": Investment,
+            "Saving": Saving,
+        }
+    def put(self, request, id, type):
+        model = self.type_model_map.get(type)
+        try:
+            txn = model.objects.get(id = id)
+        except ObjectDoesNotExist:
+            return Response({'message':'No transaction recorded with given id.'}, 400)
+        serializer = AddTransactionSerializer(instance = txn,data = request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'message' : 'Transaction edited successfully!'}, 201)
+
+        
+    def delete(self, request, id, type):
+        model = self.type_model_map.get(type)
+        try:
+            txn = model.objects.get(id = id)
+            txn.delete()
+            return Response({'message':'Transaction deeted successfully'}, status=200)
+        except ObjectDoesNotExist:
+            return Response({'message':'No transaction recorded with given id.'}, 400)
+
+        
