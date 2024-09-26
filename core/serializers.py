@@ -35,5 +35,5 @@ class TableDataSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class BarDataSerializer(serializers.Serializer):
-    date = serializers.DateTimeField()
-    amount = serializers.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    month = serializers.DateTimeField()
+    total = serializers.DecimalField(max_digits=10, decimal_places=2, default=0.00)
