@@ -112,26 +112,40 @@ def generate_format(data, key, value, format_date=False):
     return res
 
 
+# class IncomeExpensePieChart(APIView):
+#     authentication_classes = (JWTAuthentication,)
+#     permission_classes = (IsAuthenticated,)
+
+#     def get(self, request):
+#         user = request.user
+#         response = {}
+#         income_data = Income.objects.filter(user=user).order_by("amount")
+#         expense_data = Expense.objects.filter(user=user).order_by("amount")
+#         income_serializer = generatePieData(
+#             PieDataSerializer(income_data, many=True).data
+#         )
+#         expense_serializer = generatePieData(
+#             PieDataSerializer(expense_data, many=True).data
+#         )
+#         response["income"] = income_serializer
+#         response["expense"] = expense_serializer
+#         print("RES", response)
+#         return Response(response, status=200)
+
 class IncomeExpensePieChart(APIView):
     authentication_classes = (JWTAuthentication,)
     permission_classes = (IsAuthenticated,)
 
     def get(self, request):
-        user = request.user
         response = {}
-        income_data = Income.objects.filter(user=user).order_by("amount")
-        expense_data = Expense.objects.filter(user=user).order_by("amount")
-        income_serializer = generatePieData(
-            PieDataSerializer(income_data, many=True).data
-        )
-        expense_serializer = generatePieData(
-            PieDataSerializer(expense_data, many=True).data
-        )
+        user = request.user
+        income_data = Income.objects.filter(user=user).values("category").annotate(amount=Sum("amount"))
+        expense_data = Expense.objects.filter(user=user).values("category").annotate(amount=Sum("amount"))
+        income_serializer = generate_format(PieDataSerializer(income_data, many = True).data, 'category', 'amount')
+        expense_serializer = generate_format(PieDataSerializer(expense_data, many = True).data, 'category', 'amount')
         response["income"] = income_serializer
         response["expense"] = expense_serializer
-        print("RES", response)
         return Response(response, status=200)
-
 
 
 class IncomeExpenseDonutChart(APIView):
