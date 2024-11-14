@@ -9,7 +9,8 @@ from core.views import (
     AddTransactionsView,
     SummaryCardDataView,
    MonthlyBarChartView,
-    EditTransactionDataView
+    EditTransactionDataView, 
+    ReportView
     
 )
 
@@ -22,5 +23,6 @@ urlpatterns = [
     path('add-transaction/<str:type>/', AddTransactionsView.as_view(),name='add-transaction'),
     path('get-summary-data', SummaryCardDataView.as_view(), name='summary-data'),
     path('get-bar-chart', MonthlyBarChartView.as_view(), name='bar-chart'),
-    path('edit-transaction-data/<int:id>/<str:type>/', EditTransactionDataView.as_view(), name='edit-transaction')
+    path('edit-transaction-data/<int:id>/<str:type>/', EditTransactionDataView.as_view(), name='edit-transaction'),
+    path('get-report', ReportView.as_view(), name='report' )
 ]

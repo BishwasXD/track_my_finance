@@ -27,6 +27,12 @@ SECRET_KEY = 'django-insecure-fahn_foiwu775)5i=#&3u7p%2n-v0@l^4@+0^qv#vy7*ip$w#v
 DEBUG = True
 
 ALLOWED_HOSTS = []
+EMAIL_BACKEND = config('EMAIL_BACKEND')
+EMAIL_HOST = config('EMAIL_HOST')
+EMAIL_PORT = config('EMAIL_PORT')
+EMAIL_USE_TLS = config('EMAIL_USE_TLS')
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 
 
 # Application definition

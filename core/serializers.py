@@ -37,3 +37,8 @@ class TableDataSerializer(serializers.ModelSerializer):
 class BarDataSerializer(serializers.Serializer):
     month = serializers.DateTimeField()
     total = serializers.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+class ReportSerializer(serializers.Serializer):
+    total_transactions = serializers.IntegerField()
+    total_income = serializers.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    total_expense = serializers.DecimalField(max_digits=10, decimal_places=2, default=0.00)

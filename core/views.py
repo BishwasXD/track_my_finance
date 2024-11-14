@@ -12,11 +12,11 @@ from core.serializers import (
     TableDataSerializer,
     AddTransactionSerializer,
     BarDataSerializer,
+    ReportSerializer
 )
 import pandas as pd
 from django.db.models.functions import TruncDate
-from django.db.models import Sum
-from core.utils import generatePieData
+from django.db.models import Sum, Max
 from itertools import chain
 from operator import attrgetter
 from django.db import models
@@ -352,7 +352,6 @@ class MonthlyBarChartView(APIView):
         saving = BarDataSerializer(saving, many=True).data
 
         res = generate_bar_format([income, expense, saving, investment])
-        print('res', res)
         return Response(res)
      
 
@@ -435,3 +434,29 @@ class EditTransactionDataView(APIView):
             return Response({"message": "Transaction deeted successfully"}, status=200)
         except ObjectDoesNotExist:
             return Response({"message": "No transaction recorded with given id."}, 400)
+
+class ReportView(APIView):
+    authentication_classes = (JWTAuthentication,)
+    permission_classes = (IsAuthenticated,)
+    def get(self, request):
+        user = request.user
+        print("user made the request", user)
+        user = 1
+        total_transactions = Income.objects.filter(user = user).count() + Expense.objects.filter(user = user).count()
+        total_income = Income.objects.filter(user = user).aggregate(total = Sum("amount")).get('total')
+        total_expense = Expense.objects.filter(user = user).aggregate(total = Sum("amount")).get('total')
+        net_balance = total_income - total_expense
+        top_income_cat = Income.objects.filter(user = user).values("category").annotate(amount = Sum("amount")).order_by('-amount').first()
+        top_expense_cat = Expense.objects.filter(user = user).values("category").annotate(amount = Sum("amount")).order_by('-amount').first()
+        insights = "this will contain some insights of ur finance"     
+        res = {
+            "total_transactions":total_transactions,
+            "total_income":total_income,
+            "total_expense":total_expense,
+            "net_balance":net_balance,
+            "top_income_cat": top_income_cat,
+            "top_expense_cat":top_expense_cat
+        }
+        
+        return Response(res, 200)
+        
