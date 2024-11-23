@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-fahn_foiwu775)5i=#&3u7p%2n-v0@l^4@+0^qv#vy7*ip$w#v
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost','trackmyfinance-production.up.railway.app']
 EMAIL_BACKEND = config('EMAIL_BACKEND')
 EMAIL_HOST = config('EMAIL_HOST')
 EMAIL_PORT = config('EMAIL_PORT')
