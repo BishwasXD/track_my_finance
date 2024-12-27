@@ -3,7 +3,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import APIView
 from django.http import HttpResponse
-from core.models import Income, Expense, Investment, Saving
+from core.models import (Income, Expense, Investment, Saving)
 from accounts.models import User
 from core.serializers import (
     LineDataSerializer,
@@ -50,7 +50,7 @@ class AddTransactionsView(APIView):
 
 class GenerateCsvView(APIView):
     def get(self, request):
-        income_data = Income.objects.all()
+        income_data = Income.objects.values()
         df = pd.DataFrame(income_data)
         response = HttpResponse(content_type="text/csv")  # set content type in response
         response["Content-Disposition"] = (
@@ -59,7 +59,7 @@ class GenerateCsvView(APIView):
         df.to_csv(
             path_or_buf=response, index=False
         )  # directly writes csv data in response as the arg takes file path or a string
-
+        
         return response
 
 
@@ -93,7 +93,7 @@ class IncomeExpenseLineChart(APIView):
 
         line_data_response = {
             "income": income_serializer,
-            "expense": expense_serializer,
+                        "expense": expense_serializer,
         }
 
         return Response(
